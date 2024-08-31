@@ -1,36 +1,30 @@
 const axios = require('axios');
 
-const baseurl = 'http://0.0.0.0:5000';
+// Define the credentials
+const email = '1@gmail.com';
+const password = '1@100';
 
-const addUser = async (email, password) => {
-  try {
-    const response = await axios.post(`${baseurl}/users`, {
-      email,
-      password,
-    }, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+// Encode credentials to Base64
+const authHeader = Buffer.from(`${email}:${password}`).toString('base64');
 
-    // Print the response data
-    console.log(response.data);
-  } catch (error) {
-    // Print error response data
-    console.error(error.response ? error.response.data : error.message);
+// Define the URL of the endpoint
+const url = 'http://localhost:5000/connect';
+
+// Perform the request
+axios.get(url, {
+  headers: {
+    'Authorization': `Basic ${authHeader}`
   }
-};
-
-const getStats = async (what) => {
-  try {
-    const res = await axios.get(`${baseurl}/${what}`);
-    console.log(res.data);
-  } catch (err) {
-    console.log(err.res);
-  }
-};
-
-const run = async () => {
-  await getStats('status');
-};
-run()
+})
+  .then(response => {
+    // Print the successful response
+    console.log('Response:', response.data);
+  })
+  .catch(error => {
+    // Print the error response
+    if (error.response) {
+      console.error('Error:', error.response.data);
+    } else {
+      console.error('Error:', error.message);
+    }
+  });
