@@ -43,9 +43,11 @@ async function postFile(token) {
   // Define the request payload
   const payload = {
     name: 'myText.txt',
-    type: 'image',
-    data: '', // Base64 encoded data for "Hello Webstack!\n"
+    type: 'image2',
+    data: '.', // Base64 encoded data for "Hello Webstack!\n"
     // Optionally add parentId and isPublic if needed
+    isPublic: true,
+    parentId: 1,
   };
 
   try {
