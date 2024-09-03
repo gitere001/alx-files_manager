@@ -23,6 +23,7 @@ async function getConnect() {
       },
     });
     console.log('Connect Response:', response.data);
+    console.log(`Basic ${authHeader}`);
     return response.data.token; // Return the token received
   } catch (error) {
     // Handle errors
@@ -35,32 +36,54 @@ async function getConnect() {
   }
 }
 
-// Function to post a file
-async function postFile(token) {
-  // Define the URL of the endpoint
+// Function to get files with optional parentId and pagination
+async function getFiles(token, parentId, page = 0) {
   const url = `${baseUrl}/files`;
 
-  // Define the request payload
+  try {
+    const response = await axios.get(url, {
+      headers: {
+        'X-Token': token,
+      },
+      params: {
+        parentId,
+        page,
+      },
+    });
+    console.log('Files List:', response.data);
+    console.log('Basic authenication :', )
+    return response.data;
+  } catch (error) {
+    if (error.response) {
+      console.error('Get Files Error:', error.response.data);
+    } else {
+      console.error('Get Files Error:', error.message);
+    }
+    throw error;
+  }
+}
+
+// Function to post a file
+async function postFile(token, parentId) {
+  const url = `${baseUrl}/files`;
+
   const payload = {
     name: 'myText.txt',
-    type: 'image2',
-    data: '.', // Base64 encoded data for "Hello Webstack!\n"
-    // Optionally add parentId and isPublic if needed
+    type: 'text/plain',
+    data: Buffer.from('Hello Webstack!\n').toString('base64'),
     isPublic: true,
-    parentId: 1,
+    parentId: parentId, // Use the provided parentId
   };
 
   try {
-    // Perform the POST request to /files
     const response = await axios.post(url, payload, {
       headers: {
-        'X-Token': token, // Use the token received from getConnect
+        'X-Token': token,
         'Content-Type': 'application/json',
       },
     });
     console.log('File Upload Response:', response.data);
   } catch (error) {
-    // Handle errors
     if (error.response) {
       console.error('File Upload Error:', error.response.data);
     } else {
@@ -73,7 +96,15 @@ async function postFile(token) {
 async function main() {
   try {
     const token = await getConnect();
-    await postFile(token);
+
+    const parentId = '66d6b5a8d0101b0cc4f8c3a1'; // Example parentId, replace as needed
+
+    // Post a file
+    await postFile(token, parentId);
+
+    // Get files with parentId and optional pagination (e.g., page 0)
+    await getFiles(token, parentId, 0);
+
   } catch (error) {
     console.error('Error in main function:', error);
   }

@@ -109,6 +109,67 @@ class FilesController {
       }
     }
   }
+
+  static async getShow(req, res) {
+    try {
+      const user = await FilesController.getUser(req);
+      if (!user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const userId = new ObjectID(user._id);
+      const fileId = new ObjectID(req.params.id);
+      const file = await (await dbClient.filesCollection()).findOne({ _id: fileId, userId });
+      if (!file) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+      return res.status(200).json(file);
+    } catch (error) {
+      console.error('Error in getShow:');
+      return res.status(500).json({ error: 'Internal Server Error' });
+    }
+  }
+
+  static async getIndex(request, response) {
+    try {
+      const user = await FilesController.getUser(request);
+      if (!user) {
+        return response.status(401).json({ error: 'Unauthorized' });
+      }
+
+      const { parentId, page } = request.query;
+      const pageNum = parseInt(page, 10) || 0;
+      const query = !parentId ? { userId: user._id }
+        : { userId: user._id, parentId: new ObjectID(parentId) };
+
+      const filesCollection = await dbClient.filesCollection();
+
+      const result = await filesCollection.aggregate([
+        { $match: query },
+        { $sort: { _id: -1 } },
+        {
+          $facet: {
+            metadata: [{ $count: 'total' }, { $addFields: { page: pageNum } }],
+            data: [{ $skip: 20 * pageNum }, { $limit: 20 }],
+          },
+        },
+      ]).toArray();
+
+      if (result && result.length > 0) {
+        const final = result[0].data.map((file) => {
+          const tempFile = { ...file, id: file._id };
+          delete tempFile._id;
+          delete tempFile.localPath;
+          return tempFile;
+        });
+        return response.status(200).json(final);
+      }
+
+      return response.status(404).json({ error: 'Not found' });
+    } catch (error) {
+      console.error('Error in getIndex:', error);
+      return response.status(500).json({ error: 'Internal Server Error' });
+    }
+  }
 }
 
 module.exports = FilesController;
