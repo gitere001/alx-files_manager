@@ -1,7 +1,6 @@
 const { v4: uuidv4 } = require('uuid');
 const fs = require('fs').promises;
 const { ObjectID } = require('mongodb');
-const { error } = require('console');
 const dbClient = require('../utils/db');
 const redisClient = require('../utils/redis');
 
@@ -174,29 +173,64 @@ class FilesController {
 
   static async putPublish(request, response) {
     try {
+      // Retrieve the user based on the token
       const user = await FilesController.getUser(request);
       if (!user) {
         return response.status(401).json({ error: 'Unauthorized' });
       }
-      const fileId = request.params.id;
-      const files = await (await dbClient.filesCollection());
+
+      // Extract the file ID from the request parameters
+      const fileId = new ObjectID(request.params.id);
+      const parentId = new ObjectID(request.body.parentId);
+
+      // Access the files collection
+      const files = await dbClient.filesCollection();
+
+      const query = !parentId ? { _id: fileId, userId: user._id }
+        : { _id: fileId, userId: user._id, parentId };
       const newValues = { $set: { isPublic: true } };
       const options = { returnOriginal: false };
-      files.findOneAndUpdate(
-        { _id: fileId, userId: user._id },
-        newValues,
-        options,
-        (err, file) => {
-          if (!file.lastErrorObject.updatedExisting) {
-            return response.status(404).json({ error: 'Not found' });
-          }
-          return response.status(200).json(file.value);
-        },
-      );
-      return null;
+
+      // Find and update the file
+      const result = await files.findOneAndUpdate(query, newValues, options);
+
+      // Check if the file was found and updated
+      if (!result.value) {
+        return response.status(404).json({ error: 'Not found' });
+      }
+
+      // Return the updated file document
+      return response.status(200).json(result.value);
     } catch (err) {
-      console.log('error occurred:', err);
+      // Handle any errors that occur
+      console.error('Error occurred:', err);
       return response.status(500).json({ error: 'An error occurred' });
+    }
+  }
+
+  static async putUnpublish(request, response) {
+    try {
+      const user = await FilesController.getUser(request);
+      if (!user) {
+        return response.status(401).json({ error: 'Unauthorized' });
+      }
+      const fileId = new ObjectID(request.params.id);
+      const files = await dbClient.filesCollection();
+
+      const { parentId } = request.body;
+
+      const query = !parentId ? { _id: fileId, userId: user._id }
+        : { _id: fileId, userId: user._id, parentId: new ObjectID(parentId) };
+      const newValues = { $set: { isPublic: false } };
+      const options = { returnOriginal: false };
+      const result = await files.findOneAndUpdate(query, newValues, options);
+      if (!result.value) {
+        return response.status(404).json({ error: 'Not found' });
+      }
+      return response.status(200).json(result.value);
+    } catch (error) {
+      console.error('Error in putUnpublish:', error);
+      return response.status(500).json({ error: 'Internal Server Error' });
     }
   }
 }

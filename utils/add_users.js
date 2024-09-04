@@ -1,4 +1,5 @@
 const axios = require('axios');
+const dbClient = require('./db');
 
 // Define the base URL for the API
 const baseUrl = 'http://localhost:5000';
@@ -69,7 +70,7 @@ async function postFile(token, parentId) {
 
   const payload = {
     name: 'myText.txt',
-    type: 'text/plain',
+    type: 'file',
     data: Buffer.from('Hello Webstack!\n').toString('base64'),
     isPublic: true,
     parentId: parentId, // Use the provided parentId
@@ -91,6 +92,13 @@ async function postFile(token, parentId) {
     }
   }
 }
+const getFilesFromdb = async () => {
+
+  const files = await (await dbClient.filesCollection()).find({}).toArray();
+  for (const file of files) {
+    console.log(file);
+  }
+};
 
 // Main function to execute the workflow
 async function main() {
@@ -104,6 +112,8 @@ async function main() {
 
     // Get files with parentId and optional pagination (e.g., page 0)
     await getFiles(token, parentId, 0);
+
+    await getFilesFromdb();
 
   } catch (error) {
     console.error('Error in main function:', error);
