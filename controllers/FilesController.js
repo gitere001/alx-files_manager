@@ -173,38 +173,27 @@ class FilesController {
 
   static async putPublish(request, response) {
     try {
-      // Retrieve the user based on the token
       const user = await FilesController.getUser(request);
       if (!user) {
         return response.status(401).json({ error: 'Unauthorized' });
       }
-
-      // Extract the file ID from the request parameters
       const fileId = new ObjectID(request.params.id);
-      const parentId = new ObjectID(request.body.parentId);
-
-      // Access the files collection
       const files = await dbClient.filesCollection();
 
+      const { parentId } = request.body;
+
       const query = !parentId ? { _id: fileId, userId: user._id }
-        : { _id: fileId, userId: user._id, parentId };
+        : { _id: fileId, userId: user._id, parentId: new ObjectID(parentId) };
       const newValues = { $set: { isPublic: true } };
-      const options = { returnOriginal: false };
-
-      // Find and update the file
+      const options = { returnOriginal: true };
       const result = await files.findOneAndUpdate(query, newValues, options);
-
-      // Check if the file was found and updated
       if (!result.value) {
         return response.status(404).json({ error: 'Not found' });
       }
-
-      // Return the updated file document
       return response.status(200).json(result.value);
-    } catch (err) {
-      // Handle any errors that occur
-      console.error('Error occurred:', err);
-      return response.status(500).json({ error: 'An error occurred' });
+    } catch (error) {
+      console.error('Error in putUnpublish:', error);
+      return response.status(500).json({ error: 'Internal Server Error' });
     }
   }
 
