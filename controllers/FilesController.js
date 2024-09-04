@@ -1,6 +1,7 @@
 const { v4: uuidv4 } = require('uuid');
 const fs = require('fs').promises;
 const { ObjectID } = require('mongodb');
+const { error } = require('console');
 const dbClient = require('../utils/db');
 const redisClient = require('../utils/redis');
 
@@ -168,6 +169,34 @@ class FilesController {
     } catch (error) {
       console.error('Error in getIndex:', error);
       return response.status(500).json({ error: 'Internal Server Error' });
+    }
+  }
+
+  static async putPublish(request, response) {
+    try {
+      const user = await FilesController.getUser(request);
+      if (!user) {
+        return response.status(401).json({ error: 'Unauthorized' });
+      }
+      const fileId = request.params.id;
+      const files = await (await dbClient.filesCollection());
+      const newValues = { $set: { isPublic: true } };
+      const options = { returnOriginal: false };
+      files.findOneAndUpdate(
+        { _id: fileId, userId: user._id },
+        newValues,
+        options,
+        (err, file) => {
+          if (!file.lastErrorObject.updatedExisting) {
+            return response.status(404).json({ error: 'Not found' });
+          }
+          return response.status(200).json(file.value);
+        },
+      );
+      return null;
+    } catch (err) {
+      console.log('error occurred:', err);
+      return response.status(500).json({ error: 'An error occurred' });
     }
   }
 }
